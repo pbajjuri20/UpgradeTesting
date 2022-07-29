@@ -1,0 +1,10 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: stage-catalog
+  namespace: openshift-marketplace
+spec:
+  sourceType: grpc
+  image: registry.stage.redhat.io/redhat/redhat-operator-index:v4.7
+  displayName: stage-catalog
+  publisher: grpc

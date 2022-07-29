@@ -1,0 +1,12 @@
+
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: kiali-operator-catalog
+  namespace: openshift-marketplace
+spec:
+  sourceType: grpc
+  image: brew.registry.redhat.io/rh-osbs/iib:281010
+  displayName: kiali-operator-catalog
+  publisher: grpc
+
