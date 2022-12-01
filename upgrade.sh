@@ -45,7 +45,7 @@ else
    sleep 20
 fi
 oc get pods -n openshift-operators | grep kiali
-#create servicemesh operator
+#create servicemesh operator from RH catalog
 cat <<EOF | oc apply -f -
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
@@ -72,7 +72,8 @@ oc new-project istio-system || true
 
 sleep 60
 
-#create 2.2 smcp for OSSM
+#create 2.3 smcp for OSSM
+
 cat <<EOF | oc apply -f -
 apiVersion: maistra.io/v2
 kind: ServiceMeshControlPlane
@@ -98,27 +99,73 @@ spec:
       enabled: true
   telemetry:
     type: Istiod
+  version: v2.3
+EOF
+
+oc wait --for condition=Ready -n istio-system smcp/basic --timeout 120s
+
+export BOOKINFO_NAMESPACE=bookinfo
+echo $BOOKINFO_NAMESPACE
+
+export CONTROL_PLANE_NAMESPACE=istio-system
+echo $CONTROL_PLANE_NAMESPACE
+
+sh ./bookinfo.sh
+
+oc wait --for condition=Ready -n istio-system smmr/default --timeout 120s
+
+oc new-project istio-system22 || true
+
+sleep 60
+
+#create 2.2 smcp for OSSM
+
+cat <<EOF | oc apply -f -
+apiVersion: maistra.io/v2
+kind: ServiceMeshControlPlane
+metadata:
+  name: basic
+  namespace: istio-system22
+spec:
+  tracing:
+    type: Jaeger
+    sampling: 10000
+  policy:
+    type: Istiod
+  addons:
+    grafana:
+      enabled: true
+    jaeger:
+      install:
+        storage:
+          type: Memory
+    kiali:
+      enabled: true
+    prometheus:
+      enabled: true
+  telemetry:
+    type: Istiod
   version: v2.2
 EOF
-sleep 120
-#create smmr for OSSM
-cat <<EOF | oc apply -f -
-apiVersion: maistra.io/v1
-kind: ServiceMeshMemberRoll
-metadata:
-  name: default
-  namespace: istio-system
-spec:
-  members:
-    - bookinfo
-EOF
-sleep 60
-oc get smcp -n istio-system
+
+oc wait --for condition=Ready -n istio-system22 smcp/basic --timeout 120s
+
+export BOOKINFO_NAMESPACE=bookinfo22
+echo $BOOKINFO_NAMESPACE
+
+export CONTROL_PLANE_NAMESPACE=istio-system22
+echo $CONTROL_PLANE_NAMESPACE
+
+sh ./bookinfo.sh
+
+oc wait --for condition=Ready -n istio-system22 smmr/default --timeout 120s
 
 oc new-project istio-system21 || true
 
 sleep 60
-#create 2.1 smcp for OSSM
+
+# create 2.1 smcp for OSSM
+
 cat <<EOF | oc apply -f -
 apiVersion: maistra.io/v2
 kind: ServiceMeshControlPlane
@@ -146,68 +193,23 @@ spec:
     type: Istiod
   version: v2.1
 EOF
-sleep 120
-#create smmr for OSSM
-cat <<EOF | oc apply -f -
-apiVersion: maistra.io/v1
-kind: ServiceMeshMemberRoll
-metadata:
-  name: default
-  namespace: istio-system21
-spec:
-  members:
-    - bookinfo2
-EOF
-sleep 60
-oc get smcp -n istio-system21
 
-oc new-project istio-system20 || true
 
-sleep 60
-#create 2.0 smcp for OSSM
-cat <<EOF | oc apply -f -
-apiVersion: maistra.io/v2
-kind: ServiceMeshControlPlane
-metadata:
-  name: basic
-  namespace: istio-system20
-spec:
-  tracing:
-    type: Jaeger
-    sampling: 10000
-  policy:
-    type: Istiod
-  addons:
-    grafana:
-      enabled: true
-    jaeger:
-      install:
-        storage:
-          type: Memory
-    kiali:
-      enabled: true
-    prometheus:
-      enabled: true
-  telemetry:
-    type: Istiod
-  version: v2.0
-EOF
-sleep 120
-#create smmr for OSSM
-cat <<EOF | oc apply -f -
-apiVersion: maistra.io/v1
-kind: ServiceMeshMemberRoll
-metadata:
-  name: default
-  namespace: istio-system20
-spec:
-  members:
-    - bookinfo3
-EOF
-sleep 60
-oc get smcp -n istio-system20
+oc wait --for condition=Ready -n istio-system21 smcp/basic --timeout 120s
+
+export BOOKINFO_NAMESPACE=bookinfo21
+echo $BOOKINFO_NAMESPACE
+
+export CONTROL_PLANE_NAMESPACE=istio-system21
+echo $CONTROL_PLANE_NAMESPACE
+
+sh ./bookinfo.sh
+
+oc wait --for condition=Ready -n istio-system21 smmr/default --timeout 120s
+
 
 #3. Create stage catalog in same name as RH catalog
+
 cat <<EOF | oc apply -f -
 # This will assure that images will be pulled either from registry.redhat.io or registry.stage.redhat.io
 apiVersion: operator.openshift.io/v1alpha1
@@ -220,9 +222,9 @@ spec:
     - registry.stage.redhat.io
     source: registry.redhat.io
 EOF
-sleep 120
 
 #4. Create the Stage Image Content Source Policy
+
 cat <<EOF | oc apply -f -
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
@@ -236,7 +238,13 @@ spec:
     registryPoll:
       interval: "30m"
 EOF
-sleep 120
+
+MANIFEST_STATUS=$(oc get pods -n openshift-marketplace | grep stage-manifests | awk '{print $3}')
+if [ $MANIFEST_STATUS = "Running" ]; then
+   echo "stage-manifests catalog source installed"
+else
+   echo "Waiting stage-manifests catalog source installed"
+   sleep 20
 
 sh ./wait.sh
 sleep 120
@@ -262,6 +270,7 @@ else
    sleep 20
 fi
 oc get pods -n openshift-operators | grep kiali
+
 #create servicemesh operator from Stage Catalog
 cat <<EOF | oc apply -f -
 apiVersion: operators.coreos.com/v1alpha1
@@ -275,16 +284,27 @@ spec:
   source: stage-manifests
   sourceNamespace: openshift-marketplace
 EOF
+
+ISTIO_STATUS=$(oc get pods -n openshift-operators | grep istio-operator | awk '{print $3}')
+if [ $ISTIO_STATUS = "Running" ]; then
+   echo "Istio operator installed."
+else
+   echo "Waiting for Istio operator installation"
+   sleep 20
+
 #4. Check operator upgrade progress
 sleep 25
+
 oc get csv -n openshift-operators
-oc get smcp -n istio-system
-oc get smcp -n istio-system21
-oc get smcp -n istio-system20
+
+oc wait --for condition=Ready -n istio-system smcp/basic --timeout 20s
+
+oc wait --for condition=Ready -n istio-system22 smcp/basic --timeout 20s
+
+oc wait --for condition=Ready -n istio-system21 smcp/basic --timeout 20s
 
 oc get pods -n istio-system
+oc get pods -n istio-system22
 oc get pods -n istio-system21
-oc get pods -n istio-system20
 
 oc version
-
