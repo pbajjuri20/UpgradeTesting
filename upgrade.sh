@@ -1,7 +1,7 @@
 #!/bin/bash
-#Update this param value based on the OCP version on which the script is executed.
+#It will get the deployed cluster version
 OCP_VERSION="$(oc version | grep "Server Version" | cut -d ":" -f2 | cut -d "." -f1,2 | tr -d " ")"
-#create Jaeger operator
+#create Jaeger operator from RH catalog
 cat <<EOF | oc apply -f -
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
@@ -67,7 +67,9 @@ else
    sleep 20
 fi
 oc get csv -n openshift-operators
+
 oc get pods -n openshift-operators | grep istio
+
 oc new-project istio-system || true
 
 sleep 60
@@ -239,13 +241,6 @@ spec:
       interval: "30m"
 EOF
 
-MANIFEST_STATUS=$(oc get pods -n openshift-marketplace | grep stage-manifests | awk '{print $3}')
-if [ $MANIFEST_STATUS = "Running" ]; then
-   echo "stage-manifests catalog source installed"
-else
-   echo "Waiting stage-manifests catalog source installed"
-   sleep 20
-
 sh ./wait.sh
 sleep 120
 #4 Create kiali operator from Stage catalog 
@@ -291,20 +286,85 @@ if [ $ISTIO_STATUS = "Running" ]; then
 else
    echo "Waiting for Istio operator installation"
    sleep 20
+fi
 
+oc get pods -n openshift-operators | grep istio-operator
 #4. Check operator upgrade progress
-sleep 25
 
 oc get csv -n openshift-operators
 
+KIALI_UPGRADE_STATUS=$(oc get csv -n openshift-operators | grep kiali | awk '{print $6}')
+if [ $KIALI_UPGRADE_STATUS = "Succeeded" ]; then
+   echo "Kiali Operator upgraded successfully."
+else
+   echo "Kiali Operator upgraded is failed"
+fi
+
+SM_UPGRADE_STATUS=$(oc get csv -n openshift-operators | grep servicemeshoperator | awk '{print $9}')
+if [ $SM_UPGRADE_STATUS = "Succeeded" ]; then
+   echo "ServiceMesh Operator upgraded successfully."
+else
+   echo "ServiceMesh Operator upgraded is failed"
+fi
 oc wait --for condition=Ready -n istio-system smcp/basic --timeout 20s
 
-oc wait --for condition=Ready -n istio-system22 smcp/basic --timeout 20s
+oc wait --for condition=Ready -n istio-system22 smcp/basic --timeout 40s
 
-oc wait --for condition=Ready -n istio-system21 smcp/basic --timeout 20s
+oc wait --for condition=Ready -n istio-system21 smcp/basic --timeout 40s
 
 oc get pods -n istio-system
 oc get pods -n istio-system22
 oc get pods -n istio-system21
 
+
+VERIFY_PODS_STATUS_IS_23=$(oc get pods -n istio-system | grep kiali | awk '{print $3}')
+if [ $VERIFY_PODS_STATUS_IS_23 = "Running" ]; then
+   echo "Verfied all the istio-system pods installed successfully"
+else
+   echo "Pods are not installed successfully"
+fi
+
+VERIFY_PODS_STATUS_IS_22=$(oc get pods -n istio-system22 | grep kiali | awk '{print $3}')
+if [ $VERIFY_PODS_STATUS_IS_22 = "Running" ]; then
+   echo "Verfied all the istio-system22 pods installed successfully"
+else
+   echo "Pods are not installed successfully"
+fi
+
+VERIFY_PODS_STATUS_IS_21=$(oc get pods -n istio-system21 | grep kiali | awk '{print $3}')
+if [ $VERIFY_PODS_STATUS_IS_21 = "Running" ]; then
+   echo "Verfied all the istio-system23 pods installed successfully"
+else
+   echo "Pods are not installed successfully"
+fi
+
+oc get pods -n bookinfo
+oc get pods -n bookinfo22
+oc get pods -n bookinfo21
+
+VERIFY_PODS_STATUS_BI=$(oc get pods -n bookinfo21 | grep 'kiali\|details|' | awk '{print $3}')
+if [ $VERIFY_PODS_STATUS_BI = "Running" ]; then
+   echo "Verfied all the bookinfo21 pods"
+else
+   echo "bookinfo pods are not running successfully "
+   sleep 20
+fi
+
+VERIFY_PODS_STATUS_BI_22=$(oc get pods -n bookinfo22 | grep 'kiali\|productpage\|ratings\|reviews\|details|' | awk '{print $3}')
+if [ $VERIFY_PODS_STATUS_BI = "Running" ]; then
+   echo "Verfied all the bookinfo22 pods"
+else
+   echo "bookinfo pods are not running successfully "
+   sleep 20
+fi
+
+VERIFY_PODS_STATUS_BI_21=$(oc get pods -n bookinfo | grep 'kiali\|productpage\|ratings\|reviews\|details|' | awk '{print $3}')
+if [ $VERIFY_PODS_STATUS_BI = "Running" ]; then
+   echo "Verfied all the bookinfo pods"
+else
+   echo "bookinfo pods are not running successfully "
+   sleep 20
+fi
+
 oc version
+
