@@ -298,6 +298,7 @@ if [ $KIALI_UPGRADE_STATUS = "Succeeded" ]; then
    echo "Kiali Operator upgraded successfully."
 else
    echo "Kiali Operator upgraded is failed"
+exit
 fi
 
 SM_UPGRADE_STATUS=$(oc get csv -n openshift-operators | grep servicemeshoperator | awk '{print $9}')
@@ -305,7 +306,10 @@ if [ $SM_UPGRADE_STATUS = "Succeeded" ]; then
    echo "ServiceMesh Operator upgraded successfully."
 else
    echo "ServiceMesh Operator upgraded is failed"
+exit
 fi
+
+
 oc wait --for condition=Ready -n istio-system smcp/basic --timeout 20s
 
 oc wait --for condition=Ready -n istio-system22 smcp/basic --timeout 40s
@@ -322,6 +326,7 @@ if [ $VERIFY_PODS_STATUS_IS_23 = "Running" ]; then
    echo "Verfied all the istio-system pods installed successfully"
 else
    echo "Pods are not installed successfully"
+exit
 fi
 
 VERIFY_PODS_STATUS_IS_22=$(oc get pods -n istio-system22 | grep kiali | awk '{print $3}')
@@ -329,6 +334,7 @@ if [ $VERIFY_PODS_STATUS_IS_22 = "Running" ]; then
    echo "Verfied all the istio-system22 pods installed successfully"
 else
    echo "Pods are not installed successfully"
+exit
 fi
 
 VERIFY_PODS_STATUS_IS_21=$(oc get pods -n istio-system21 | grep kiali | awk '{print $3}')
@@ -336,6 +342,7 @@ if [ $VERIFY_PODS_STATUS_IS_21 = "Running" ]; then
    echo "Verfied all the istio-system23 pods installed successfully"
 else
    echo "Pods are not installed successfully"
+exit
 fi
 
 oc get pods -n bookinfo
@@ -348,6 +355,7 @@ if [ $VERIFY_PODS_STATUS_BI = "Running" ]; then
 else
    echo "bookinfo pods are not running successfully "
    sleep 20
+exit
 fi
 
 VERIFY_PODS_STATUS_BI_22=$(oc get pods -n bookinfo22 | grep 'kiali\|productpage\|ratings\|reviews\|details|' | awk '{print $3}')
@@ -356,6 +364,7 @@ if [ $VERIFY_PODS_STATUS_BI = "Running" ]; then
 else
    echo "bookinfo pods are not running successfully "
    sleep 20
+exit
 fi
 
 VERIFY_PODS_STATUS_BI_21=$(oc get pods -n bookinfo | grep 'kiali\|productpage\|ratings\|reviews\|details|' | awk '{print $3}')
@@ -364,7 +373,7 @@ if [ $VERIFY_PODS_STATUS_BI = "Running" ]; then
 else
    echo "bookinfo pods are not running successfully "
    sleep 20
+exit
 fi
 
 oc version
-
