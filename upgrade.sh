@@ -325,7 +325,7 @@ VERIFY_PODS_STATUS_IS_23=$(oc get pods -n istio-system | grep kiali | awk '{prin
 if [ $VERIFY_PODS_STATUS_IS_23 = "Running" ]; then
    echo "Verfied all the istio-system pods installed successfully"
 else
-   echo "Pods are not installed successfully"
+   echo "2.3 Pods are not installed successfully"
 exit
 fi
 
@@ -333,15 +333,15 @@ VERIFY_PODS_STATUS_IS_22=$(oc get pods -n istio-system22 | grep kiali | awk '{pr
 if [ $VERIFY_PODS_STATUS_IS_22 = "Running" ]; then
    echo "Verfied all the istio-system22 pods installed successfully"
 else
-   echo "Pods are not installed successfully"
+   echo "2.2 Pods are not installed successfully"
 exit
 fi
 
 VERIFY_PODS_STATUS_IS_21=$(oc get pods -n istio-system21 | grep kiali | awk '{print $3}')
 if [ $VERIFY_PODS_STATUS_IS_21 = "Running" ]; then
-   echo "Verfied all the istio-system23 pods installed successfully"
+   echo "Verfied all the istio-system21 pods installed successfully"
 else
-   echo "Pods are not installed successfully"
+   echo "2.1 Pods are not installed successfully"
 exit
 fi
 
@@ -349,11 +349,11 @@ oc get pods -n bookinfo
 oc get pods -n bookinfo22
 oc get pods -n bookinfo21
 
-VERIFY_PODS_STATUS_BI=$(oc get pods -n bookinfo21 | grep 'kiali\|details|' | awk '{print $3}')
+VERIFY_PODS_STATUS_BI_21=$(oc get pods -n bookinfo21 | grep 'kiali\|details|' | awk '{print $3}')
 if [ $VERIFY_PODS_STATUS_BI = "Running" ]; then
    echo "Verfied all the bookinfo21 pods"
 else
-   echo "bookinfo pods are not running successfully "
+   echo "bookinfo21 pods are not running successfully "
    sleep 20
 exit
 fi
@@ -362,16 +362,16 @@ VERIFY_PODS_STATUS_BI_22=$(oc get pods -n bookinfo22 | grep 'kiali\|productpage\
 if [ $VERIFY_PODS_STATUS_BI = "Running" ]; then
    echo "Verfied all the bookinfo22 pods"
 else
-   echo "bookinfo pods are not running successfully "
+   echo "bookinfo22 pods are not running successfully "
    sleep 20
 exit
 fi
 
-VERIFY_PODS_STATUS_BI_21=$(oc get pods -n bookinfo | grep 'kiali\|productpage\|ratings\|reviews\|details|' | awk '{print $3}')
+VERIFY_PODS_STATUS_BI=$(oc get pods -n bookinfo | grep 'kiali\|productpage\|ratings\|reviews\|details|' | awk '{print $3}')
 if [ $VERIFY_PODS_STATUS_BI = "Running" ]; then
-   echo "Verfied all the bookinfo pods"
+   echo "Verfied all the bookinfo23 pods"
 else
-   echo "bookinfo pods are not running successfully "
+   echo "bookinfo23 pods are not running successfully "
    sleep 20
 exit
 fi
